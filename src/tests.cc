@@ -166,7 +166,7 @@ using namespace std::chrono;
 
 	auto stop = high_resolution_clock::now();
 
-	float elapsed_time=duration_cast<seconds>(stop - start).count();
+	float elapsed_time=duration_cast<milliseconds>(stop - start).count();
 
 	cout <<elapsed_time<< "\n";
 
@@ -251,7 +251,7 @@ using namespace std::chrono;
 
 		auto stop_seq = high_resolution_clock::now();
 
-	float elapsed_time_seq=duration_cast<seconds>(stop_seq - start_seq).count();
+	float elapsed_time_seq=duration_cast<milliseconds>(stop_seq - start_seq).count();
 
 	cout <<elapsed_time_seq<< "\n";
 
