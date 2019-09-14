@@ -147,7 +147,7 @@ using namespace std::chrono;
 			auto stop = high_resolution_clock::now();
 
 			auto elapsed_time=duration_cast<milliseconds>(stop - start);
-
+			std::cout<<"<"<<elapsed_time.count()<<","<<thread_id<<">"<< std::endl;
 
 		proc_time[thread_id]=elapsed_time.count();
     }; 

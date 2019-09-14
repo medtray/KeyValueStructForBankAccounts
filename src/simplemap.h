@@ -19,9 +19,10 @@ class simplemap
     public:
 
     int tableSize;
+    int lock_size;
 
     simplemap(int tab_size):tableSize(tab_size), //constructor of the class
-    MainStruct(tableSize),mutexes(tableSize)  
+    MainStruct(tableSize),mutexes(tableSize/10),lock_size(tableSize/10)  
         
     {
     }
@@ -40,8 +41,9 @@ class simplemap
         Value value;
         
         unsigned long hashValue = key%tableSize;
+        int bucket_to_lock=hashValue%lock_size;
         //lock the bucket
-        boost::shared_lock<boost::shared_mutex> m(mutexes[hashValue]);
+        boost::shared_lock<boost::shared_mutex> m(mutexes[bucket_to_lock]);
         KeyValueUnit<Key, Value> *unit = MainStruct[hashValue];
             
 
@@ -66,7 +68,8 @@ class simplemap
         //std::hash<std::string> hash_fn;
         //unsigned long hashValue = hash_fn((key))%tableSize;
         unsigned long hashValue = key%tableSize;
-        boost::unique_lock<boost::shared_mutex> lock(mutexes[hashValue]);
+        int bucket_to_lock=hashValue%lock_size;
+        boost::unique_lock<boost::shared_mutex> lock(mutexes[bucket_to_lock]);
 
         KeyValueUnit<Key, Value> *previousUnit = NULL;
         KeyValueUnit<Key, Value> *unit = MainStruct[hashValue];
@@ -107,9 +110,9 @@ class simplemap
         //std::hash<std::string> hash_fn;
         //unsigned long hashValue = hash_fn((key))%tableSize;
         unsigned long hashValue = key%tableSize;
-
+        int bucket_to_lock=hashValue%lock_size;
         
-        boost::unique_lock<boost::shared_mutex> lock(mutexes[hashValue]);
+        boost::unique_lock<boost::shared_mutex> lock(mutexes[bucket_to_lock]);
         KeyValueUnit<Key, Value> *previousUnit = NULL;
         KeyValueUnit<Key, Value> *unit = MainStruct[hashValue];
 
@@ -154,7 +157,8 @@ class simplemap
     {
        
         unsigned long hashValue = key%tableSize;
-        boost::unique_lock<boost::shared_mutex> lock(mutexes[hashValue]);
+        int bucket_to_lock=hashValue%lock_size;
+        boost::unique_lock<boost::shared_mutex> lock(mutexes[bucket_to_lock]);
         KeyValueUnit<Key, Value> *previousUnit = NULL;
         KeyValueUnit<Key, Value> *unit = MainStruct[hashValue];
 
@@ -194,9 +198,12 @@ class simplemap
         unsigned long hashValue1 = key1%tableSize;
         unsigned long hashValue2 = key2%tableSize;
 
+        int bucket_to_lock1=hashValue1%lock_size;
+        int bucket_to_lock2=hashValue2%lock_size;
 
-        boost::unique_lock<boost::shared_mutex> m1(mutexes[hashValue1], boost::defer_lock);
-        boost::unique_lock<boost::shared_mutex> m2(mutexes[hashValue2], boost::defer_lock);
+
+        boost::unique_lock<boost::shared_mutex> m1(mutexes[bucket_to_lock1], boost::defer_lock);
+        boost::unique_lock<boost::shared_mutex> m2(mutexes[bucket_to_lock2], boost::defer_lock);
 
         
 
@@ -204,12 +211,17 @@ class simplemap
 
         locks_prepare.push_back(0);
         locks_prepare.push_back(0);
+        bool mm1;
+        bool mm2;
 
         int success=0;
         while(!success)
         {
-            bool mm1=m1.try_lock();
-            bool mm2=m2.try_lock();
+            if (bucket_to_lock1!=bucket_to_lock2)
+            {
+            mm1=m1.try_lock();
+            mm2=m2.try_lock();
+            
             if (mm1) {
                 locks_prepare[0]=1;
         } else {
@@ -221,6 +233,21 @@ class simplemap
         } else {
             locks_prepare[1]=0; 
         }
+            }
+
+        else
+        {
+            mm1=m1.try_lock();
+
+            if (mm1) {
+                locks_prepare[0]=1;
+                locks_prepare[1]=1;
+        } else {
+            locks_prepare[0]=0; 
+            locks_prepare[1]=0;
+        }
+        }
+        
 
         if (locks_prepare[0]==1&&locks_prepare[1]==1)
         {
@@ -245,8 +272,17 @@ class simplemap
                     unit2 = unit2->getpoinTo();
             }
 
+            if (bucket_to_lock1!=bucket_to_lock2)
+            {
+
             m1.unlock();
             m2.unlock();
+            }
+            else
+            {
+                m1.unlock();
+            }
+            
 
             success=1;
 
@@ -254,6 +290,7 @@ class simplemap
 
         else
         {
+            
             if (locks_prepare[0]==1)
                 m1.unlock();
 
@@ -300,13 +337,12 @@ class simplemap
     float balance()
 
     {
-        std::vector<int> locks_prepare(tableSize, 0);
 
         float summ=0;
 
-        std::vector<boost::shared_lock<boost::shared_mutex>> m(tableSize);
+        std::vector<boost::shared_lock<boost::shared_mutex>> m(lock_size);
 
-        for (int i=0;i<tableSize;i++)
+        for (int i=0;i<lock_size;i++)
         {
            m[i]=static_cast<boost::shared_lock<boost::shared_mutex>>(mutexes[i]);
 
