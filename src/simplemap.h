@@ -22,7 +22,7 @@ class simplemap
     int lock_size;
 
     simplemap(int tab_size):tableSize(tab_size), //constructor of the class
-    MainStruct(tableSize),mutexes(tableSize/10),lock_size(tableSize/10)  
+    MainStruct(tableSize),mutexes(tableSize/1000),lock_size(tableSize/1000)  
         
     {
     }
