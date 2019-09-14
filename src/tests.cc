@@ -261,6 +261,14 @@ using namespace std::chrono;
 		// Execution terminates.
 		// If you reach this stage happy, then you did a good job!
 
+		
+		for (int i=0;i<max_key;i++)
+		{
+			map.remove(i);
+		}
+		
+		
+
 		// Final step: Produce plot
         // I expect each submission to include a plot in which
         // the x-axis is the concurrent threads used {1;2;4;8}
@@ -270,7 +278,7 @@ using namespace std::chrono;
 
         // You might need the following function to print the entire map.
         // Attention if you use it while multiple threads are operating
-        //map.apply(printer);
+        map.apply(printer);
 
 		cout <<"done"<< "\n";
 
